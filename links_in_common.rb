@@ -4,6 +4,10 @@ require 'cgi'
 require 'open-uri'
 require 'json'
 
+def get_link_urls_from_response(response)
+	response.map { |link| link["uu"] }
+end
+
 # You can obtain you access id and secret key here: http://www.seomoz.org/api/keys
 ACCESS_ID	= ENV["MOZ_ACCESS_ID"]
 SECRET_KEY	= ENV["MOZ_SECRET_KEY"]
@@ -21,16 +25,20 @@ binary_signature = OpenSSL::HMAC.digest('sha1', SECRET_KEY, string_to_sign)
 # We need to base64-encode it and then url-encode that.
 URL_SAFE_SIGNATURE = CGI::escape(Base64.encode64(binary_signature).chomp)
 
+# Set Link Metrics request parameters
 source_cols = "4"
 target_cols = "4"
 link_cols		= "0"
 scope = "page_to_subdomain"
 sort = "page_authority"
 filter = "external+follow"
-limit = "100"
+limit = "150"
 
 target_domains = []
-link_profiles = []
+responses = []
+
+# Check for compare all option flag and store if present
+option_flag = ARGV.pop if ARGV.size == 4
 
 # Put domains being compared into array
 ARGV.each { |domain| target_domains << URI::encode(domain) }
@@ -47,37 +55,39 @@ target_domains.each do |target_domain|
 	# Go and fetch the URL
 	response = open(request_url).read
 
-	# Push response into link profiles array
-	link_profiles << JSON.parse(response)
+	# Push parsed response into link profiles array
+	responses << JSON.parse(response)
 
 	# Delay next request
 	sleep(10)
 end
 
-# Create array to store common links
-common_links = []
+# Create array to store link profiles
+link_profiles = []
 
-# Perform expensive check for common links
-link_profiles.first.each do |domain_one_link|
-	link_profiles.last.each do |domain_two_link|
-		common_links << domain_one_link["uu"] if domain_one_link["uu"] == domain_two_link["uu"] && !common_links.include?(domain_one_link["uu"])
-	end
+# Get URLs from each response
+responses.each do |response|
+	link_profiles << get_link_urls_from_response(response)
 end
 
-# Output # of common links w/ URLs
+# Find common links between latter two domains
+common_links = link_profiles[1] & link_profiles[2]
+
+# If -ca option is present, compare all; if not, subtract our domain's links
+option_flag == "-ca" ? common_links &= link_profiles[0] : common_links -= link_profiles[0]
+
+# Output possible link opportunities
 puts
 puts "You found #{common_links.size} common links."
 puts
 unless common_links.empty?
 	common_links.each { |url| puts url }
-	puts 
-end
+	puts
 
-# Write common links to file if any are found
-timestamp = Time.now.to_i
-file_name = "common-links-#{timestamp}.txt"
-file = File.open(file_name, "w") unless common_links.empty?
-if file
+	# Write common links to file if any are found
+	timestamp = Time.now.to_i
+	file_name = "common-links-#{timestamp}.txt"
+	file = File.open(file_name, "w")
 	common_links.each { |url| file.puts url }
 	file.close
 	puts "Common links saved in working directory: #{file_name}"
