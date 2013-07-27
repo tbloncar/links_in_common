@@ -1,2 +1,5 @@
 # ignore generated .txt files
 *.txt
+
+# ignore .DS_Store
+.DS_Store

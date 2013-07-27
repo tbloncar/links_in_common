@@ -58,9 +58,9 @@ end
 common_links = []
 
 # Perform expensive check for common links
-link_profiles.first.each do |link_one|
-	link_profiles.last.each do |link_two|
-		common_links << link_one["uu"] if link_one["uu"] == link_two["uu"] && !common_links.include?(link_one["uu"])
+link_profiles.first.each do |domain_one_link|
+	link_profiles.last.each do |domain_two_link|
+		common_links << domain_one_link["uu"] if domain_one_link["uu"] == domain_two_link["uu"] && !common_links.include?(domain_one_link["uu"])
 	end
 end
 
