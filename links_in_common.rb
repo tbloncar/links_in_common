@@ -66,9 +66,7 @@ end
 link_profiles = []
 
 # Get URLs from each response
-responses.each do |response|
-	link_profiles << get_link_urls_from_response(response)
-end
+responses.each { |response| link_profiles << get_link_urls_from_response(response) }
 
 # Find common links between latter two domains
 common_links = link_profiles[1] & link_profiles[2]
